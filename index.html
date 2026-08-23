@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Calendar Creator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="card">
+    <h2>📅 เพิ่มกิจกรรมลง Calendar</h2>
+    <p class="subtitle">พิมพ์ข้อความหรืออัปโหลดรูปภาพกิจกรรมเพื่อให้ระบบลงปฏิทินให้อัตโนมัติ</p>
+
+    <!-- ช่องใส่ Webhook URL -->
+    <div class="form-group">
+      <label for="webhookUrl">n8n Webhook URL:</label>
+      <input type="url" id="webhookUrl" placeholder="https://my-n8n-app.onrender.com/webhook/..." required>
+    </div>
+
+    <!-- สลับแท็บ ข้อความ / รูปภาพ -->
+    <div class="tab-buttons">
+      <button class="tab-btn active" onclick="switchTab('text')">📝 ข้อความ</button>
+      <button class="tab-btn" onclick="switchTab('image')">🖼️ รูปภาพ</button>
+    </div>
+
+    <!-- ฟอร์มส่งข้อความ -->
+    <div id="textSection" class="input-section active">
+      <div class="form-group">
+        <label for="textInput">รายละเอียดกิจกรรม:</label>
+        <textarea id="textInput" rows="4" placeholder="เช่น นัดประชุมทีมพรุ่งนี้ 10 โมงเช้า ที่ห้องประชุม B"></textarea>
+      </div>
+      <button id="btnSendText" class="btn-submit" onclick="sendText()">ส่งข้อมูลข้อความ</button>
+    </div>
+
+    <!-- ฟอร์มส่งรูปภาพ -->
+    <div id="imageSection" class="input-section">
+      <div class="form-group">
+        <label>อัปโหลดรูปภาพโปสเตอร์ / ภาพกิจกรรม:</label>
+        <div class="file-dropzone" onclick="document.getElementById('imageInput').click()">
+          <p id="fileLabel">📁 คลิกที่นี่เพื่อเลือกรูปภาพ หรือลากไฟล์มาวาง</p>
+          <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="handleFileSelect(event)">
+        </div>
+      </div>
+      <button id="btnSendImage" class="btn-submit" onclick="sendImage()">ส่งข้อมูลรูปภาพ</button>
+    </div>
+
+    <!-- แสดงสถานะการส่งข้อมูล -->
+    <div id="statusMessage" class="status-box hidden"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
