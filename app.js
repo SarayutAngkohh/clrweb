@@ -1,100 +1,102 @@
-let selectedFile = null;
-
-// สลับแท็บ ข้อความ / รูปภาพ
-function switchTab(type) {
-  const tabs = document.querySelectorAll('.tab-btn');
-  const sections = document.querySelectorAll('.input-section');
+// ฟังก์ชันแสดงสถานะบนหน้าเว็บ
+function showStatus(message, isSuccess = true) {
+  const statusDiv = document.getElementById('statusMessage');
+  if (!statusDiv) return;
   
-  tabs.forEach(btn => btn.classList.remove('active'));
-  sections.forEach(sec => sec.classList.remove('active'));
-
-  if (type === 'text') {
-    tabs[0].classList.add('active');
-    document.getElementById('textSection').classList.add('active');
-  } else {
-    tabs[1].classList.add('active');
-    document.getElementById('imageSection').classList.add('active');
-  }
+  statusDiv.style.display = 'block';
+  statusDiv.innerText = message;
+  statusDiv.style.backgroundColor = isSuccess ? '#e8f5e9' : '#ffebee';
+  statusDiv.style.color = isSuccess ? '#2e7d32' : '#c62828';
+  statusDiv.style.padding = '10px';
+  statusDiv.style.borderRadius = '5px';
+  statusDiv.style.marginTop = '10px';
 }
 
-// เลือกไฟล์รูปภาพ
-function handleFileSelect(event) {
-  const file = event.target.files[0];
-  if (file) {
-    selectedFile = file;
-    document.getElementById('fileLabel').textContent = `📷 เลือกไฟล์แล้ว: ${file.name}`;
-  }
-}
-
-// ฟังก์ชันแสดงสถานะการทำงาน
-function showStatus(message, isSuccess) {
-  const statusBox = document.getElementById('statusMessage');
-  statusBox.textContent = message;
-  statusBox.className = `status-box ${isSuccess ? 'success' : 'error'}`;
-}
-
-// 1. ส่งข้อมูลข้อความไป n8n
+// 1. ส่งข้อมูลข้อความไปยัง n8n Webhook
 async function sendText() {
-  const webhookUrl = document.getElementById('webhookUrl').value.trim();
-  const textInput = document.getElementById('textInput').value.trim();
-
-  if (!webhookUrl) return alert('กรุณาใส่ Webhook URL ของ n8n ก่อนครับ');
-  if (!textInput) return alert('กรุณากรอกข้อความก่อนส่งครับ');
-
+  const webhookUrlInput = document.getElementById('webhookUrl');
+  const textInput = document.getElementById('textInput');
   const btn = document.getElementById('btnSendText');
+
+  const webhookUrl = webhookUrlInput ? webhookUrlInput.value.trim() : '';
+  const messageText = textInput ? textInput.value.trim() : '';
+
+  if (!webhookUrl) return alert('กรุณาใส่ n8n Webhook URL ก่อนครับ');
+  if (!messageText) return alert('กรุณากรอกข้อความก่อนส่งครับ');
+
   btn.disabled = true;
-  showStatus('⏳ กำลังส่งข้อมูลไปยัง n8n (อาจใช้เวลา 30 วิหาก Cold Start)...', true);
+  showStatus('⏳ กำลังส่งข้อมูลไปยัง n8n...', true);
+
+  // ใช้ URLSearchParams เพื่อส่งแบบ Form Data ป้องกัน Error 405
+  const payload = new URLSearchParams();
+  payload.append('message', messageText);
 
   try {
     const response = await fetch(webhookUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: textInput })
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: payload.toString()
     });
 
     if (response.ok) {
-      showStatus('✅ ส่งข้อความสำเร็จ! n8n กำลังประมวลผล', true);
-      document.getElementById('textInput').value = '';
+      showStatus('✅ ส่งข้อความสำเร็จ! n8n รับข้อมูลเรียบร้อยแล้ว', true);
+      textInput.value = '';
     } else {
       showStatus(`❌ เกิดข้อผิดพลาดจาก Server (Code: ${response.status})`, false);
     }
   } catch (err) {
-    showStatus('❌ ไม่สามารถเชื่อมต่อ n8n ได้ (ตรวจสอบ URL หรือ CORS)', false);
+    console.error('Fetch error:', err);
+    showStatus('❌ ไม่สามารถเชื่อมต่อกับ n8n ได้ (เช็ก URL หรือ CORS)', false);
   } finally {
     btn.disabled = false;
   }
 }
 
-// 2. ส่งข้อมูลรูปภาพไป n8n
-async function sendImage() {
-  const webhookUrl = document.getElementById('webhookUrl').value.trim();
+// 2. ส่งข้อมูลแบบไฟล์ (ถ้ามีปุ่มอัปโหลดไฟล์ในหน้าเว็บ)
+async function sendFile() {
+  const webhookUrlInput = document.getElementById('webhookUrl');
+  const fileInput = document.getElementById('fileInput');
+  const btn = document.getElementById('btnSendFile');
 
-  if (!webhookUrl) return alert('กรุณาใส่ Webhook URL ของ n8n ก่อนครับ');
-  if (!selectedFile) return alert('กรุณาเลือกรูปภาพก่อนครับ');
+  const webhookUrl = webhookUrlInput ? webhookUrlInput.value.trim() : '';
+  const file = fileInput && fileInput.files ? fileInput.files[0] : null;
 
-  const btn = document.getElementById('btnSendImage');
+  if (!webhookUrl) return alert('กรุณาใส่ n8n Webhook URL ก่อนครับ');
+  if (!file) return alert('กรุณาเลือกไฟล์ก่อนส่งครับ');
+
   btn.disabled = true;
-  showStatus('⏳ กำลังอัปโหลดรูปภาพไปยัง n8n...', true);
+  showStatus('⏳ กำลังอัปโหลดไฟล์ไปยัง n8n...', true);
 
   const formData = new FormData();
-  formData.append('data', selectedFile); // ส่งไฟล์ในคีย์ชื่อ 'data'
+  formData.append('file', file);
 
   try {
     const response = await fetch(webhookUrl, {
       method: 'POST',
-      body: formData // ยิงเป็น multipart/form-data
+      body: formData // ไม่ต้องใส่ Header Content-Type เบราว์เซอร์จะจัดการ Boundary ให้เอง
     });
 
     if (response.ok) {
-      showStatus('✅ ส่งรูปภาพสำเร็จ! n8n กำลังอ่านข้อมูลภาพ', true);
-      selectedFile = null;
-      document.getElementById('fileLabel').textContent = '📁 คลิกที่นี่เพื่อเลือกรูปภาพ หรือลากไฟล์มาวาง';
+      showStatus('✅ ส่งไฟล์สำเร็จ! n8n รับข้อมูลเรียบร้อยแล้ว', true);
+      fileInput.value = '';
     } else {
       showStatus(`❌ เกิดข้อผิดพลาดจาก Server (Code: ${response.status})`, false);
     }
   } catch (err) {
-    showStatus('❌ ไม่สามารถเชื่อมต่อ n8n ได้ (ตรวจสอบ URL หรือ CORS)', false);
+    console.error('Fetch error:', err);
+    showStatus('❌ ไม่สามารถเชื่อมต่อกับ n8n ได้', false);
   } finally {
     btn.disabled = false;
   }
 }
+
+// ผูก Event Listener เมื่อโหลด DOM เสร็จสมบูรณ์
+document.addEventListener('DOMContentLoaded', () => {
+  const btnSendText = document.getElementById('btnSendText');
+  const btnSendFile = document.getElementById('btnSendFile');
+
+  if (btnSendText) btnSendText.addEventListener('click', sendText);
+  if (btnSendFile) btnSendFile.addEventListener('click', sendFile);
+});
